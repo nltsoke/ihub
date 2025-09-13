@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IHUB LOGISTICS</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f0f0f0;
+  }
+  .container {
+    max-width: 400px;
+    margin: 30px auto;
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    color: #2C3E50;
+  }
+  h2 {
+    text-align: center;
+    margin-bottom: 12px;
+    color: #E67E22;
+  }
+  .dashed {
+    border-top: 2px dashed #BDC3C7;
+    margin: 15px 0;
+  }
+  .info-box {
+    padding: 10px;
+    border-radius: 10px;
+    background-color: #ECF0F1;
+  }
+  .info-box input {
+    border: 1px solid #BDC3C7;
+    border-radius: 6px;
+    padding: 4px 6px;
+    width: 70%;
+    outline: none;
+    transition: 0.3s;
+  }
+  .info-box input:focus {
+    border-color: #E67E22;
+  }
+  table {
+    width: 100%;
+    font-size: 14px;
+    border-collapse: collapse;
+  }
+  thead {
+    background-color: #F39C12;
+    color: #fff;
+  }
+  th, td {
+    padding: 6px;
+  }
+  tbody tr:nth-child(even) {
+    background-color: #FDEBD0;
+  }
+  tbody tr:nth-child(odd) {
+    background-color: #FCF3CF;
+  }
+  .item-input {
+    width: 100%;
+    border: 1px solid #BDC3C
+    border-radius: 6px;
+    padding: 4px 6px;
+    outline: none;
+    transition: 0.3s;
+  }
+  .item-input:focus {
+    border-color: #E67E22;
+  }
+  .btn {
+    border: none;
+    border-radius: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+    color: #fff;
+  }
+  .btn-add { background: linear-gradient(45deg, #F39C12, #E67E22); margin-right: 10px; }
+  .btn-print { background: linear-gradient(45deg, #1ABC9C, #16A085); }
+  .btn:hover { opacity: 0.8; }
+  .delete-btn { color: #E74C3C; background: transparent; cursor: pointer; font-weight: bold; border: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>IHUB LOGISTICS</h2>
+  <div class="dashed"></div>
+
+  <div class="info-box">
+    <p>ລູກຄ້າ: <input id="customer" type="text"></p>
+    <p>ຜູ້ສົ່ງ: <input id="sender" type="text"></p>
+    <p>ຜູ້ຮັບ: <input id="receiver" type="text"></p>
+    <p>
+      ອໍເດີ: <input id="orderId" type="text" value="INV123456" style="width:50%">
+      <button onclick="clearOrderId()" style="margin-left:8px; background-color:#E74C3C; color:#fff; border-radius:6px; padding:4px 8px; font-weight:bold;">X</button>
+    </p>
+  </div>
+
+  <div class="dashed"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ສິນຄ້າ</th>
+        <th>ຈໍານວນ</th>
+        <th style="text-align:right;">ລາຄາ</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="itemsTable"></tbody>
+  </table>
+
+  <div class="dashed"></div>
+
+  <div style="font-size:16px; text-align:center; margin-top:15px;">
+    <p><strong style="color:#E67E22">ລວມທັງໝົດ: <span id="total">0.00</span> ກີບ</strong></p>
+    <svg id="barcode"></svg>
+    <p style="color:#E74C3C; font-weight:bold;">ຂອບໃຈທີ່ໃຊ້ບໍລິການ</p>
+  </div>
+
+  <div style="text-align:center; margin-top:20px;">
+    <button class="btn btn-add" onclick="addRow()">+ ເພີ່ມສິນຄ້າ</button>
+    <button class="btn btn-print" onclick="window.print()">ພິມໃບບິນ</button>
+  </div>
+</div>
+
+<script>
+let items = [
+  { name: "ກາເຟເຢັນ", qty: 2, price: 80 },
+  { name: "ເຂົ້າປັງປິ້ງ", qty: 1, price: 30 }
+];
+
+function renderTable() {
+  const tbody = document.getElementById('itemsTable');
+  tbody.innerHTML = '';
+  items.forEach((item, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="item-input" value="${item.name}" onchange="updateItem(${i}, 'name', this.value)"></td>
+      <td><input class="item-input" type="number" value="${item.qty}" style="width:50px; text-align:center;" onchange="updateItem(${i}, 'qty', this.value)"></td>
+      <td style="text-align:right;"><input class="item-input" type="number" value="${item.price}" style="width:70px; text-align:right;" onchange="updateItem(${i}, 'price', this.value)"></td>
+      <td style="text-align:center;"><button class="delete-btn" onclick="deleteRow(${i})">X</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateTotal();
+  updateBarcode();
+}
+
+function updateItem(index, field, value) {
+  items[index][field] = field === 'name' ? value : parseFloat(value) || 0;
+  renderTable();
+}
+
+function deleteRow(index) {
+  items.splice(index, 1);
+  renderTable();
+}
+
+function addRow() {
+  items.push({ name: "ສິນຄ້າໃໝ່", qty: 1, price: 0 });
+  renderTable();
+}
+
+function updateTotal() {
+  const total = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+  document.getElementById('total').textContent = total.toFixed(2);
+}
+
+function updateBarcode() {
+  const orderId = document.getElementById('orderId').value || '000000';
+  JsBarcode("#barcode", orderId, {
+    format: "CODE128",
+    lineColor: "#2C3E50",
+    width: 2,
+    height: 50,
+    displayValue: true,
+    fontColor: "#2C3E50",
+  });
+}
+
+function clearOrderId() {
+  if(confirm("ຕ້ອງການລຶບເລກຄໍາສັ່ງຈິງບໍ?")) {
+    document.getElementById('orderId').value = '';
+    updateBarcode();
+  }
+}
+
+// Init
+document.getElementById('orderId').addEventListener('input', updateBarcode);
+renderTable();
+</script>
+
+</body>
+</html>
